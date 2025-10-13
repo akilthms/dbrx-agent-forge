@@ -1,0 +1,14 @@
+# The main pipeline for dbrx_agent_forge
+resources:
+  pipelines:
+    dbrx_agent_forge_pipeline:
+      name: dbrx_agent_forge_pipeline
+      catalog: ns_demo_db
+      schema: dbrx_agent_forge_${bundle.target}
+      serverless: true
+      libraries:
+        - notebook:
+            path: ../src/dlt_pipeline.ipynb
+
+      configuration:
+        bundle.sourcePath: ${workspace.file_path}/src

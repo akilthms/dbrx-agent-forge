@@ -1,0 +1,9 @@
+.databricks/
+build/
+dist/
+__pycache__/
+*.egg-info
+.venv/
+dbrx_agent_forge/scratch/README.md
+!scratch/README.md
+.env
