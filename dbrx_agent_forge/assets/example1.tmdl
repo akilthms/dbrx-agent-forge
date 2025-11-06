@@ -1,0 +1,58 @@
+database Sales
+    compatibilityLevel: 1567
+
+model Model
+    culture: en-US
+
+datasource Default
+    type: Sql
+    connectionString: "Server=MyServer;Database=MyDB;Trusted_Connection=True;"
+
+table Sales
+    partition 'Sales-Partition' = m
+        mode: import
+        source =
+            let
+                Source = Sql.Database("MyServer","MyDB"),
+                dbo_Sales = Source{[Schema="dbo",Name="Sales"]}[Data]
+            in
+                dbo_Sales
+
+    measure 'Sales Amount' = SUMX('Sales', 'Sales'[Quantity] * 'Sales'[UnitPrice])
+        formatString: $ #,##0
+
+    column 'Product Key'
+        dataType: int64
+        isHidden
+        sourceColumn: ProductKey
+        summarizeBy: None
+
+    column Quantity
+        dataType: int64
+        sourceColumn: Quantity
+        summarizeBy: Sum
+
+table Product
+    partition 'Product-Partition' = m
+        mode: import
+        source =
+            let
+                Source = Sql.Database("MyServer","MyDB"),
+                dbo_Product = Source{[Schema="dbo",Name="Product"]}[Data]
+            in
+                dbo_Product
+
+    column 'Product Key'
+        dataType: int64
+        isKey
+        sourceColumn: ProductKey
+        summarizeBy: None
+
+relationship rel1
+    fromColumn: Sales.'Product Key'
+    toColumn: Product.'Product Key'
+
+role Role_ReadOnly
+    modelPermission: read
+    tablePermission Sales = TRUE
+    tablePermission Product = TRUE

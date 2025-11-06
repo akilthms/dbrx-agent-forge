@@ -1,0 +1,44 @@
+database SalesInventory
+    compatibilityLevel: 1567
+
+model Model
+    culture: en-US
+
+datasource Default
+    type: Sql
+    connectionString: "Server=SQLPROD01;Database=RetailDW;Trusted_Connection=True;"
+
+table Sales
+    partition 'Sales-Partition' = m
+        mode: import
+        source =
+            let
+                Source = Sql.Database("SQLPROD01","RetailDW"),
+                dbo_Sales = Source{[Schema="dbo",Name="FactSales"]}[Data]
+            in
+                dbo_Sales
+
+    measure 'Total Revenue' = SUMX('Sales', 'Sales'[Quantity] * 'Sales'[UnitPrice])
+        formatString: "$#,##0"
+
+    column 'Product Key'
+        dataType: int64
+        sourceColumn: ProductKey
+
+    column 'Quantity'
+        dataType: int64
+        sourceColumn: Quantity
+
+table Inventory
+    partition 'Inventory-Partition' = m
+        mode: import
+        source =
+            let
+                Source = Sql.Database("SQLPROD01","RetailDW"),
+                dbo_Inventory = Source{[Schema="dbo",Name="FactInventory"]}[Data]
+            in
+                dbo_Inventory
+
+relationship rel1
+    fromColumn: Sales.'Product Key'
+    toColumn: Inventory.'Product Key'

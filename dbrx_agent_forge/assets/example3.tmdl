@@ -1,0 +1,45 @@
+database HRAnalytics
+    compatibilityLevel: 1567
+
+model Model
+    culture: en-US
+
+datasource Default
+    type: Sql
+    connectionString: "Server=HRSQL;Database=PeopleDB;Trusted_Connection=True;"
+
+table Employees
+    partition 'Employee-Partition' = m
+        mode: import
+        source =
+            let
+                Source = Sql.Database("HRSQL","PeopleDB"),
+                dbo_Employees = Source{[Schema="dbo",Name="Employees"]}[Data]
+            in
+                dbo_Employees
+
+    column 'Employee ID'
+        dataType: int64
+        isKey
+        sourceColumn: EmpID
+
+    column 'Department'
+        dataType: string
+        sourceColumn: Department
+
+table Salaries
+    partition 'Salary-Partition' = m
+        mode: import
+        source =
+            let
+                Source = Sql.Database("HRSQL","PeopleDB"),
+                dbo_Salaries = Source{[Schema="dbo",Name="Salaries"]}[Data]
+            in
+                dbo_Salaries
+
+    measure 'Average Salary' = AVERAGE('Salaries'[BaseSalary])
+        formatString: "$#,##0"
+
+relationship rel1
+    fromColumn: Employees.'Employee ID'
+    toColumn: Salaries.'Employee ID'

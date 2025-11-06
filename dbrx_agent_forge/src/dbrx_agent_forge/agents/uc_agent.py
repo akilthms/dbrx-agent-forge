@@ -25,7 +25,75 @@ from langgraph.graph.message import AnyMessage, add_messages, MessagesState
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt import tools_condition
+from dbrx_agent_forge.src.dbrx_agent_forge.agents.base_agent import BaseAgent
 
+
+class UCAgent(BaseAgent):
+    def __init__(self, experiment_name: str, settings: Settings = Settings()):
+        super().__init__(experiment_name)
+        self.settings = settings
+
+
+    @tool
+    def read_table(
+            self,
+            catalog_name: str,
+            schema_name: str,
+            table_name: str,
+            limit: Optional[int] = 1000,
+            where_clause: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Read contents of a Unity Catalog table.
+
+        Args:
+            catalog_name: Name of the catalog
+            schema_name: Name of the schema
+            table_name: Name of the table
+            limit: Maximum number of rows to return (default: 1000)
+            where_clause: Optional WHERE clause for filtering
+
+        Returns:
+            List of dictionaries representing table rows
+        """
+        full_table_name = f"{catalog_name}.{schema_name}.{table_name}"
+
+        # Build SELECT statement
+        sql = f"SELECT * FROM {full_table_name}"
+
+        if where_clause:
+            sql += f" WHERE {where_clause}"
+
+        if limit:
+            sql += f" LIMIT {limit}"
+
+        try:
+            result = w.statement_execution.execute_statement(
+                warehouse_id=settings.warehouse_id,
+                statement=sql
+            )
+
+            # Wait for completion and get results
+            if result.result and result.result.data_array:
+                # Get column names from table schema
+                table_info = w.tables.get(full_table_name)
+                column_names = [col.name for col in table_info.columns]
+
+                # Convert result data to list of dictionaries
+                rows = []
+                for row_data in result.result.data_array:
+                    row_dict = {}
+                    for i, value in enumerate(row_data):
+                        if i < len(column_names):
+                            row_dict[column_names[i]] = value
+                    rows.append(row_dict)
+
+                return rows
+            else:
+                return []
+
+        except Exception as e:
+            return [{"error": f"Error reading table: {str(e)}"}]
 
 
 class AgentState(TypedDict):
